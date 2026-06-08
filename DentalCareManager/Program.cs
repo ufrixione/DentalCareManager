@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-
+﻿
 namespace DentalCareManager
 {
     // 1. Definición de Estructuras
