@@ -1,18 +1,15 @@
 ﻿using System;
-using System.IO;
-using System.Globalization;
-using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
 
 namespace DentalCareManager
 {
-    // 1. Definición de Estructuras
     struct Paciente
     {
         public int IdPaciente;
-        public string NombreCompleto;
+        public string Nombre;
+        public string Apellido;
+        public string Cedula;
         public string Telefono;
-        public string FechaNacimiento;
-        public string Correo;
     }
 
     struct Cita
@@ -21,32 +18,34 @@ namespace DentalCareManager
         public Paciente DatosPaciente;
         public string FechaHora;
         public string MotivoConsulta;
-        public bool Activa;
+        public string Estado;
     }
 
     class Program
     {
         static Cita[] agendaCitas = new Cita[100];
         static int totalCitas = 0;
-        const string archivoDB = "citas.txt";
+
+        // CADENA DE CONEXIÓN (Ajusta el Server si utilizas SQLEXPRESS u otra instancia)
+        const string connectionString = "Server=localhost;Database=ConsultorioDental;Trusted_Connection=True;TrustServerCertificate=True;";
 
         static void Main(string[] args)
         {
-            CargarArchivo();
-            bool salir = false;
+            CargarDesdeBaseDatos();
 
+            bool salir = false;
             while (!salir)
             {
                 Console.Clear();
                 Console.WriteLine("======================================================");
-                Console.WriteLine("   DENTAL CARE MANAGER - Consultorio Dr.    ");
+                Console.WriteLine("   DENTAL CARE MANAGER - Consultorio SQL Server     ");
                 Console.WriteLine("======================================================");
                 Console.WriteLine("1. Registrar nueva cita");
                 Console.WriteLine("2. Consultar agenda completa");
                 Console.WriteLine("3. Buscar cita por paciente");
                 Console.WriteLine("4. Modificar datos de una cita");
                 Console.WriteLine("5. Cancelar (Eliminar) cita");
-                Console.WriteLine("6. Guardar y actualizar archivo");
+                Console.WriteLine("6. Sincronizar / Actualizar datos de la BD");
                 Console.WriteLine("7. Salir del sistema");
                 Console.WriteLine("======================================================");
                 Console.Write("Seleccione una opción: ");
@@ -55,41 +54,27 @@ namespace DentalCareManager
 
                 switch (opcion)
                 {
-                    case "1":
-                        RegistrarCita();
-                        break;
-                    case "2":
-                        MostrarAgenda();
-                        break;
-                    case "3":
-                        BuscarCita();
-                        break;
-                    case "4":
-                        ModificarCita();
-                        break;
-                    case "5":
-                        CancelarCita();
-                        break;
+                    case "1": RegistrarCita(); break;
+                    case "2": MostrarAgenda(); break;
+                    case "3": BuscarCita(); break;
+                    case "4": ModificarCita(); break;
+                    case "5": CancelarCita(); break;
                     case "6":
-                        GuardarArchivo();
-                        Console.WriteLine("\nArchivo guardado con éxito.");
-                        Pausar();
+                        CargarDesdeBaseDatos();
+                        Console.WriteLine("\nDatos sincronizados. Presione ENTER.");
+                        Console.ReadLine();
                         break;
                     case "7":
-                        GuardarArchivo();
                         salir = true;
-                        Console.WriteLine("\nSaliendo del sistema... ¡Hasta pronto!");
-                        Pausar();
+                        Console.WriteLine("\nSaliendo... ¡Hasta pronto!");
                         break;
                     default:
-                        Console.WriteLine("\nOpción no válida.");
-                        Pausar();
+                        Console.WriteLine("\nOpción inválida. Presione ENTER.");
+                        Console.ReadLine();
                         break;
                 }
             }
         }
-
-        // --- MÉTODOS DE LA APLICACIÓN ---
 
         static void RegistrarCita()
         {
@@ -98,84 +83,114 @@ namespace DentalCareManager
 
             if (totalCitas >= 100)
             {
-                Console.WriteLine("La agenda está llena (Límite de 100 citas alcanzado).");
-                Pausar();
+                Console.WriteLine("La agenda interna está llena.");
+                Console.ReadLine();
                 return;
             }
 
             Paciente nuevoPaciente = new Paciente();
-            nuevoPaciente.IdPaciente = totalCitas + 1;
+            Console.Write("Nombre del paciente: ");
+            nuevoPaciente.Nombre = Console.ReadLine() ?? "Desconocido";
 
-            // 1. VALIDACIÓN DEL NOMBRE
-            while (true)
+            Console.Write("Apellido del paciente: ");
+            nuevoPaciente.Apellido = Console.ReadLine() ?? "Desconocido";
+
+            Console.Write("Cédula: ");
+            nuevoPaciente.Cedula = Console.ReadLine() ?? "N/A";
+
+            Console.Write("Teléfono: ");
+            nuevoPaciente.Telefono = Console.ReadLine() ?? "N/A";
+
+            string fechaInput = "";
+            string horaInput = "";
+            bool horarioValido = false;
+            DateTime fechaFinal = DateTime.Now;
+            TimeSpan horaFinal = TimeSpan.Zero;
+
+            while (!horarioValido)
             {
-                Console.Write("Nombre completo del paciente: ");
-                string entradaNombre = Console.ReadLine() ?? "";
-                if (ValidarSoloLetras(entradaNombre))
-                {
-                    nuevoPaciente.NombreCompleto = entradaNombre;
-                    break;
-                }
-                Console.WriteLine("ERROR: El nombre solo debe contener letras y no puede estar vacío.");
-                Pausar();
-            }
+                Console.Write("Fecha de la cita (Ej. 2026-10-15): ");
+                fechaInput = Console.ReadLine() ?? "";
 
-            // 2. VALIDACIÓN DEL TELÉFONO
-            while (true)
-            {
-                Console.Write("Teléfono (8 dígitos numéricos, ej. 88881234): ");
-                string entradaTel = Console.ReadLine() ?? "";
-                if (ValidarTelefonoNicaragua(entradaTel))
-                {
-                    nuevoPaciente.Telefono = entradaTel;
-                    break;
-                }
-                Console.WriteLine("ERROR: Ingrese un número válido de Nicaragua (exactamente 8 números enteros).");
-                Pausar();
-            }
+                Console.Write("Hora de la cita (Ej. 14:30): ");
+                horaInput = Console.ReadLine() ?? "";
 
-            // 3. VALIDACIÓN DE FECHA DE NACIMIENTO
-            while (true)
-            {
-                Console.Write("Fecha de nacimiento (Ej. 25/12/1995): ");
-                string entradaFechaNac = Console.ReadLine() ?? "";
-
-                if (ValidarFechaNacimiento(entradaFechaNac, out DateTime fechaNac))
+                if (DateTime.TryParse(fechaInput, out fechaFinal) && TimeSpan.TryParse(horaInput, out horaFinal))
                 {
-                    if (fechaNac > DateTime.Now)
+                    if (ValidarHorarioExacto(fechaFinal.Date, horaFinal))
                     {
-                        Console.WriteLine("ERROR: La fecha de nacimiento no puede ser una fecha futura.");
-                        Pausar();
-                        continue;
+                        horarioValido = true;
                     }
-                    nuevoPaciente.FechaNacimiento = entradaFechaNac;
-                    break;
+                    else
+                    {
+                        Console.WriteLine("ERROR: Ya existe una cita activa en esa misma fecha y hora. Intente otra.");
+                    }
                 }
-                Console.WriteLine("ERROR: Formato incorrecto. Use solo números con barra (/) en formato DD/MM/AAAA.");
-                Pausar();
+                else
+                {
+                    Console.WriteLine("ERROR: Formato de fecha u hora incorrecto. Use AAAA-MM-DD y HH:MM.");
+                }
             }
 
-            Console.Write("Correo electrónico (opcional): ");
-            nuevoPaciente.Correo = Console.ReadLine() ?? "N/A";
+            try
+            {
+                using (SqlConnection conexion = new SqlConnection(connectionString))
+                {
+                    conexion.Open();
 
-            Cita nuevaCita = new Cita();
-            nuevaCita.IdCita = totalCitas + 1;
-            nuevaCita.DatosPaciente = nuevoPaciente;
+                    // Mapeo exacto a las columnas reales de tu tabla Pacientes
+                    string queryPaciente = @"INSERT INTO Pacientes (Cedula, Nombre, Apellido, Telefono, FechaRegistro, Activo) 
+                                             OUTPUT INSERTED.IdPaciente 
+                                             VALUES (@Cedula, @Nombre, @Apellido, @Tel, @FechaReg, 1);";
 
-            // 4. VALIDACIÓN DE FECHA Y HORA (AHORA MÁS INTUITIVO)
-            Console.WriteLine("\n--- DATOS DE LA CITA ---");
-            nuevaCita.FechaHora = SolicitarFechaHoraLibre();
+                    SqlCommand cmdP = new SqlCommand(queryPaciente, conexion);
+                    cmdP.Parameters.AddWithValue("@Cedula", nuevoPaciente.Cedula);
+                    cmdP.Parameters.AddWithValue("@Nombre", nuevoPaciente.Nombre);
+                    cmdP.Parameters.AddWithValue("@Apellido", nuevoPaciente.Apellido);
+                    cmdP.Parameters.AddWithValue("@Tel", nuevoPaciente.Telefono);
+                    cmdP.Parameters.AddWithValue("@FechaReg", DateTime.Now);
 
-            Console.Write("Motivo de la consulta (Ej. Limpieza, Extracción): ");
-            nuevaCita.MotivoConsulta = Console.ReadLine() ?? "Consulta General";
+                    int idPacienteGenerado = (int)cmdP.ExecuteScalar();
 
-            nuevaCita.Activa = true;
+                    // Mapeo exacto a las columnas reales de tu tabla Citas
+                    string queryCita = @"INSERT INTO Citas (IdPaciente, Fecha, Hora, Estado, IdDentista) 
+                                         VALUES (@IdPaciente, @Fecha, @Hora, 'Activa', 1);";
 
-            agendaCitas[totalCitas] = nuevaCita;
-            totalCitas++;
+                    SqlCommand cmdC = new SqlCommand(queryCita, conexion);
+                    cmdC.Parameters.AddWithValue("@IdPaciente", idPacienteGenerado);
+                    cmdC.Parameters.AddWithValue("@Fecha", fechaFinal.Date);
+                    cmdC.Parameters.AddWithValue("@Hora", horaFinal);
 
-            Console.WriteLine("\n¡Cita registrada con éxito!");
-            Pausar();
+                    cmdC.ExecuteNonQuery();
+                }
+
+                Console.WriteLine("\n¡Cita y Paciente registrados con éxito en SQL Server!");
+                CargarDesdeBaseDatos();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"\n[ERROR AL GUARDAR]: {ex.Message}");
+            }
+
+            Console.ReadLine();
+        }
+
+        static bool ValidarHorarioExacto(DateTime fecha, TimeSpan hora)
+        {
+            string query = "SELECT COUNT(*) FROM Citas WHERE Fecha = @Fecha AND Hora = @Hora AND Estado = 'Activa'";
+            try
+            {
+                using (SqlConnection conexion = new SqlConnection(connectionString))
+                {
+                    conexion.Open();
+                    SqlCommand cmd = new SqlCommand(query, conexion);
+                    cmd.Parameters.AddWithValue("@Fecha", fecha);
+                    cmd.Parameters.AddWithValue("@Hora", hora);
+
+                    return (int)cmd.ExecuteScalar() == 0;
+                }
+            }
+            catch { return false; }
         }
 
         static void MostrarAgenda()
@@ -184,290 +199,180 @@ namespace DentalCareManager
             Console.WriteLine("--- AGENDA COMPLETA DE CITAS ---");
 
             int citasActivas = 0;
-
             for (int i = 0; i < totalCitas; i++)
             {
-                if (agendaCitas[i].Activa)
+                if (agendaCitas[i].Estado == "Activa")
                 {
                     ImprimirDetalleCita(agendaCitas[i]);
                     citasActivas++;
                 }
             }
 
-            if (citasActivas == 0)
-            {
-                Console.WriteLine("No hay citas activas registradas.");
-            }
-            else
-            {
-                Console.WriteLine($"\nTotal de citas activas: {citasActivas}");
-            }
+            if (citasActivas == 0) Console.WriteLine("No hay citas activas.");
+            else Console.WriteLine($"\nTotal de citas activas: {citasActivas}");
 
-            Pausar();
+            Console.WriteLine("\nPresione ENTER para regresar.");
+            Console.ReadLine();
         }
 
         static void BuscarCita()
         {
             Console.Clear();
             Console.WriteLine("--- BUSCAR CITA POR PACIENTE ---");
-            Console.Write("Ingrese el nombre del paciente a buscar: ");
+            Console.Write("Ingrese el nombre del paciente: ");
             string busqueda = (Console.ReadLine() ?? "").ToLower();
 
             bool encontrada = false;
-
             for (int i = 0; i < totalCitas; i++)
             {
-                if (agendaCitas[i].Activa && agendaCitas[i].DatosPaciente.NombreCompleto.ToLower().Contains(busqueda))
+                if (agendaCitas[i].Estado == "Activa" && agendaCitas[i].DatosPaciente.Nombre.ToLower().Contains(busqueda))
                 {
                     ImprimirDetalleCita(agendaCitas[i]);
                     encontrada = true;
                 }
             }
-
-            if (!encontrada)
-            {
-                Console.WriteLine("\nNo se encontraron citas activas para ese paciente.");
-            }
-
-            Pausar();
+            if (!encontrada) Console.WriteLine("\nNo se encontraron citas.");
+            Console.ReadLine();
         }
 
         static void ModificarCita()
         {
             Console.Clear();
             Console.WriteLine("--- MODIFICAR DATOS DE CITA ---");
-            Console.Write("Ingrese el ID de la cita a modificar: ");
+            Console.Write("Ingrese el ID de la cita: ");
 
             if (int.TryParse(Console.ReadLine(), out int idBuscado))
             {
                 bool encontrada = false;
                 for (int i = 0; i < totalCitas; i++)
                 {
-                    if (agendaCitas[i].IdCita == idBuscado && agendaCitas[i].Activa)
+                    if (agendaCitas[i].IdCita == idBuscado && agendaCitas[i].Estado == "Activa")
                     {
                         encontrada = true;
-                        Console.WriteLine($"\nModificando cita de: {agendaCitas[i].DatosPaciente.NombreCompleto}");
-                        Console.WriteLine("1. Modificar Fecha y Hora");
-                        Console.WriteLine("2. Modificar Motivo de consulta");
+                        Console.WriteLine("1. Modificar Fecha/Hora");
                         Console.Write("Seleccione una opción: ");
                         string opc = Console.ReadLine() ?? "";
 
                         if (opc == "1")
                         {
-                            Console.WriteLine("\n--- NUEVA FECHA Y HORA ---");
-                            agendaCitas[i].FechaHora = SolicitarFechaHoraLibre();
-                            Console.WriteLine("Fecha modificada con éxito.");
-                        }
-                        else if (opc == "2")
-                        {
-                            Console.Write("Nuevo motivo de consulta: ");
-                            agendaCitas[i].MotivoConsulta = Console.ReadLine() ?? agendaCitas[i].MotivoConsulta;
-                            Console.WriteLine("Motivo modificado con éxito.");
-                        }
-                        else
-                        {
-                            Console.WriteLine("Opción no válida.");
+                            Console.Write("Nueva Fecha (Ej. 2026-10-15): ");
+                            string nuevaFechaInput = Console.ReadLine() ?? "";
+
+                            Console.Write("Nueva Hora (Ej. 14:30): ");
+                            string nuevaHoraInput = Console.ReadLine() ?? "";
+
+                            if (DateTime.TryParse(nuevaFechaInput, out DateTime nFecha) && TimeSpan.TryParse(nuevaHoraInput, out TimeSpan nHora))
+                            {
+                                if (ValidarHorarioExacto(nFecha.Date, nHora))
+                                {
+                                    try
+                                    {
+                                        using (SqlConnection conexion = new SqlConnection(connectionString))
+                                        {
+                                            conexion.Open();
+                                            string query = "UPDATE Citas SET Fecha = @Fecha, Hora = @Hora WHERE IdCita = @Id";
+                                            SqlCommand cmd = new SqlCommand(query, conexion);
+                                            cmd.Parameters.AddWithValue("@Fecha", nFecha.Date);
+                                            cmd.Parameters.AddWithValue("@Hora", nHora);
+                                            cmd.Parameters.AddWithValue("@Id", idBuscado);
+                                            cmd.ExecuteNonQuery();
+                                        }
+                                        Console.WriteLine("Fecha y hora modificadas con éxito.");
+                                        CargarDesdeBaseDatos();
+                                    }
+                                    catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+                                }
+                                else Console.WriteLine("Horario ocupado en el sistema.");
+                            }
+                            else Console.WriteLine("Formatos incorrectos.");
                         }
                         break;
                     }
                 }
-
-                if (!encontrada) Console.WriteLine("Cita no encontrada o ya está cancelada.");
+                if (!encontrada) Console.WriteLine("Cita no encontrada o inactiva.");
             }
-            else
-            {
-                Console.WriteLine("ID inválido.");
-            }
-
-            Pausar();
+            Console.ReadLine();
         }
 
         static void CancelarCita()
         {
             Console.Clear();
             Console.WriteLine("--- CANCELAR CITA ---");
-            Console.Write("Ingrese el ID de la cita a cancelar: ");
+            Console.Write("Ingrese el ID de la cita: ");
 
             if (int.TryParse(Console.ReadLine(), out int idBuscado))
             {
-                bool encontrada = false;
-                for (int i = 0; i < totalCitas; i++)
+                try
                 {
-                    if (agendaCitas[i].IdCita == idBuscado && agendaCitas[i].Activa)
+                    using (SqlConnection conexion = new SqlConnection(connectionString))
                     {
-                        agendaCitas[i].Activa = false;
-                        Console.WriteLine($"La cita de {agendaCitas[i].DatosPaciente.NombreCompleto} ha sido cancelada.");
-                        encontrada = true;
-                        break;
-                    }
-                }
-                if (!encontrada) Console.WriteLine("Cita no encontrada o ya estaba cancelada.");
-            }
-            else
-            {
-                Console.WriteLine("ID inválido.");
-            }
+                        conexion.Open();
+                        string query = "UPDATE Citas SET Estado = 'Cancelada' WHERE IdCita = @Id";
+                        SqlCommand cmd = new SqlCommand(query, conexion);
+                        cmd.Parameters.AddWithValue("@Id", idBuscado);
+                        int filas = cmd.ExecuteNonQuery();
 
-            Pausar();
+                        if (filas > 0) Console.WriteLine("Cita cancelada correctamente en SQL Server.");
+                        else Console.WriteLine("Cita no encontrada.");
+                    }
+                    CargarDesdeBaseDatos();
+                }
+                catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+            }
+            Console.ReadLine();
         }
 
-        // --- PERSISTENCIA DE DATOS ---
-
-        static void GuardarArchivo()
+        static void CargarDesdeBaseDatos()
         {
+            totalCitas = 0;
+            string query = @"SELECT C.IdCita, P.IdPaciente, P.Nombre, P.Apellido, P.Telefono, C.Fecha, C.Hora, C.Estado 
+                             FROM Citas C 
+                             INNER JOIN Pacientes P ON C.IdPaciente = P.IdPaciente
+                             WHERE C.Estado = 'Activa'";
+
             try
             {
-                using (StreamWriter sw = new StreamWriter(archivoDB))
+                using (SqlConnection conexion = new SqlConnection(connectionString))
                 {
-                    for (int i = 0; i < totalCitas; i++)
+                    conexion.Open();
+                    SqlCommand comando = new SqlCommand(query, conexion);
+
+                    using (SqlDataReader reader = comando.ExecuteReader())
                     {
-                        Cita c = agendaCitas[i];
-                        string linea = $"{c.IdCita}|{c.DatosPaciente.IdPaciente}|{c.DatosPaciente.NombreCompleto}|{c.DatosPaciente.Telefono}|{c.DatosPaciente.FechaNacimiento}|{c.DatosPaciente.Correo}|{c.FechaHora}|{c.MotivoConsulta}|{c.Activa}";
-                        sw.WriteLine(linea);
+                        while (reader.Read() && totalCitas < 100)
+                        {
+                            Cita c = new Cita();
+                            c.IdCita = reader.GetInt32(0);
+
+                            c.DatosPaciente = new Paciente();
+                            c.DatosPaciente.IdPaciente = reader.GetInt32(1);
+                            c.DatosPaciente.Nombre = reader.GetString(2);
+                            c.DatosPaciente.Apellido = reader.GetString(3);
+                            c.DatosPaciente.Telefono = reader.IsDBNull(4) ? "N/A" : reader.GetString(4);
+
+                            DateTime fecha = reader.GetDateTime(5);
+                            TimeSpan hora = reader.GetTimeSpan(6);
+                            c.FechaHora = fecha.Add(hora).ToString("yyyy-MM-dd HH:mm");
+
+                            c.Estado = reader.GetString(7);
+
+                            agendaCitas[totalCitas] = c;
+                            totalCitas++;
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error al guardar el archivo: {ex.Message}");
+                Console.WriteLine($"\n[AVISO AL INICIAR]: Error al cargar datos: {ex.Message}");
             }
-        }
-
-        static void CargarArchivo()
-        {
-            if (File.Exists(archivoDB))
-            {
-                try
-                {
-                    string[] lineas = File.ReadAllLines(archivoDB);
-                    foreach (string linea in lineas)
-                    {
-                        if (!string.IsNullOrWhiteSpace(linea))
-                        {
-                            string[] datos = linea.Split('|');
-                            if (datos.Length == 9)
-                            {
-                                Cita c = new Cita();
-                                c.IdCita = int.Parse(datos[0]);
-
-                                c.DatosPaciente = new Paciente();
-                                c.DatosPaciente.IdPaciente = int.Parse(datos[1]);
-                                c.DatosPaciente.NombreCompleto = datos[2];
-                                c.DatosPaciente.Telefono = datos[3];
-                                c.DatosPaciente.FechaNacimiento = datos[4];
-                                c.DatosPaciente.Correo = datos[5];
-
-                                c.FechaHora = datos[6];
-                                c.MotivoConsulta = datos[7];
-                                c.Activa = bool.Parse(datos[8]);
-
-                                agendaCitas[totalCitas] = c;
-                                totalCitas++;
-                            }
-                        }
-                    }
-                }
-                catch (Exception)
-                {
-                    Console.WriteLine("Advertencia: Hubo un problema al cargar algunas citas anteriores.");
-                    Pausar();
-                }
-            }
-        }
-
-        // --- MÉTODOS AUXILIARES Y DE VALIDACIÓN ---
-
-        static void Pausar()
-        {
-            Console.WriteLine("Presione ENTER para continuar...");
-            Console.ReadLine();
-        }
-
-        static string SolicitarFechaHoraLibre()
-        {
-            while (true)
-            {
-                // 1. Pedir solo la Fecha
-                Console.Write("Fecha (Ej. 15/10/2026): ");
-                string entradaFecha = Console.ReadLine() ?? "";
-
-                if (!DateTime.TryParseExact(entradaFecha, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime fechaCita))
-                {
-                    Console.WriteLine("ERROR: La fecha debe tener el formato DD/MM/AAAA.");
-                    Pausar();
-                    continue; // Vuelve a intentar
-                }
-
-                // 2. Pedir solo la Hora
-                Console.Write("Hora (Formato 24h, Ej. 14:30): ");
-                string entradaHora = Console.ReadLine() ?? "";
-
-                if (!DateTime.TryParseExact(entradaHora, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime horaCita))
-                {
-                    Console.WriteLine("ERROR: La hora debe tener el formato HH:MM (Ej. 09:00, 14:30).");
-                    Pausar();
-                    continue; // Vuelve a intentar
-                }
-
-                // 3. Juntar ambas y verificar que no sea en el pasado
-                DateTime fechaHoraCompleta = fechaCita.Date.Add(horaCita.TimeOfDay);
-                if (fechaHoraCompleta < DateTime.Now)
-                {
-                    Console.WriteLine("ERROR: No puede programar una cita en una fecha/hora pasada.");
-                    Pausar();
-                    continue;
-                }
-
-                // 4. Verificar disponibilidad en la agenda
-                string fechaHoraResult = fechaHoraCompleta.ToString("dd/MM/yyyy HH:mm");
-                if (ValidarHorario(fechaHoraResult))
-                {
-                    return fechaHoraResult; // Salimos del bucle devolviendo la fecha limpia
-                }
-                else
-                {
-                    Console.WriteLine("ERROR: Ya existe una cita activa en ese horario. Intente con otra hora.");
-                    Pausar();
-                }
-            }
-        }
-
-        static bool ValidarHorario(string fechaHora)
-        {
-            for (int i = 0; i < totalCitas; i++)
-            {
-                if (agendaCitas[i].Activa && agendaCitas[i].FechaHora == fechaHora)
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
-
-        static bool ValidarSoloLetras(string texto)
-        {
-            if (string.IsNullOrWhiteSpace(texto)) return false;
-            return Regex.IsMatch(texto, @"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$");
-        }
-
-        static bool ValidarTelefonoNicaragua(string telefono)
-        {
-            if (string.IsNullOrWhiteSpace(telefono)) return false;
-            return Regex.IsMatch(telefono, @"^\d{8}$");
-        }
-
-        static bool ValidarFechaNacimiento(string fechaStr, out DateTime fechaResultado)
-        {
-            return DateTime.TryParseExact(fechaStr, "dd/MM/yyyy",
-                CultureInfo.InvariantCulture, DateTimeStyles.None, out fechaResultado);
         }
 
         static void ImprimirDetalleCita(Cita c)
         {
             Console.WriteLine("--------------------------------------------------");
             Console.WriteLine($"[ID Cita: {c.IdCita}] - Fecha y Hora: {c.FechaHora}");
-            Console.WriteLine($"Paciente: {c.DatosPaciente.NombreCompleto} | F. Nac: {c.DatosPaciente.FechaNacimiento} | Tel: {c.DatosPaciente.Telefono}");
-            Console.WriteLine($"Motivo: {c.MotivoConsulta}");
+            Console.WriteLine($"Paciente: {c.DatosPaciente.Nombre} {c.DatosPaciente.Apellido} | Tel: {c.DatosPaciente.Telefono}");
         }
     }
 }
