@@ -1,5 +1,4 @@
-﻿
-namespace DentalCareManager
+﻿namespace DentalCareManager
 {
     // 1. Definición de Estructuras
     struct Paciente
@@ -7,7 +6,7 @@ namespace DentalCareManager
         public int IdPaciente;          // Identificador único del paciente
         public string NombreCompleto;   // Nombre y apellido del paciente
         public string Telefono;         // Número de contacto principal
-        public int Edad;                // Edad del paciente 
+        public DateTime FechaNacimiento; // MODIFICADO: Ahora almacena la fecha completa en lugar de solo la edad
         public string Correo;           // Correo electrónico 
     }
 
@@ -106,7 +105,7 @@ namespace DentalCareManager
 
             // Datos del Paciente
             nuevaCita.DatosPaciente = new Paciente();
-            nuevaCita.DatosPaciente.IdPaciente = totalCitas + 1; // Para simplificar, usamos el mismo ID
+            nuevaCita.DatosPaciente.IdPaciente = totalCitas + 1;
 
             Console.Write("Nombre completo del paciente: ");
             nuevaCita.DatosPaciente.NombreCompleto = Console.ReadLine() ?? "Desconocido";
@@ -114,16 +113,16 @@ namespace DentalCareManager
             Console.Write("Teléfono: ");
             nuevaCita.DatosPaciente.Telefono = Console.ReadLine() ?? "N/A";
 
-            // Validación de número entero con try-catch
+            // MODIFICADO: Validación y captura de Fecha de Nacimiento
             try
             {
-                Console.Write("Edad: ");
-                nuevaCita.DatosPaciente.Edad = int.Parse(Console.ReadLine() ?? "0");
+                Console.Write("Fecha de nacimiento (Ej. 18/05/1998): ");
+                nuevaCita.DatosPaciente.FechaNacimiento = DateTime.Parse(Console.ReadLine() ?? "");
             }
             catch (FormatException)
             {
-                Console.WriteLine("Formato de edad incorrecto. Se asignará 0 por defecto.");
-                nuevaCita.DatosPaciente.Edad = 0;
+                Console.WriteLine("Formato de fecha incorrecto. Se asignará la fecha actual por defecto.");
+                nuevaCita.DatosPaciente.FechaNacimiento = DateTime.Today;
             }
 
             Console.Write("Correo electrónico: ");
@@ -162,15 +161,14 @@ namespace DentalCareManager
 
         static bool ValidarHorario(string fechaHora)
         {
-            // Recorre el arreglo para evitar duplicidad de horarios activos
             for (int i = 0; i < totalCitas; i++)
             {
                 if (agendaCitas[i].Activa && agendaCitas[i].FechaHora == fechaHora)
                 {
-                    return false; // El horario ya está ocupado
+                    return false;
                 }
             }
-            return true; // El horario está libre
+            return true;
         }
 
         static void MostrarAgenda()
@@ -296,7 +294,7 @@ namespace DentalCareManager
                 {
                     if (agendaCitas[i].IdCita == idBuscado && agendaCitas[i].Activa)
                     {
-                        agendaCitas[i].Activa = false; // Borrado lógico
+                        agendaCitas[i].Activa = false;
                         Console.WriteLine($"La cita de {agendaCitas[i].DatosPaciente.NombreCompleto} ha sido cancelada y el espacio liberado.");
                         encontrada = true;
                         break;
@@ -323,8 +321,8 @@ namespace DentalCareManager
                     for (int i = 0; i < totalCitas; i++)
                     {
                         Cita c = agendaCitas[i];
-                        // Separamos los datos con el carácter '|'
-                        string linea = $"{c.IdCita}|{c.DatosPaciente.IdPaciente}|{c.DatosPaciente.NombreCompleto}|{c.DatosPaciente.Telefono}|{c.DatosPaciente.Edad}|{c.DatosPaciente.Correo}|{c.FechaHora}|{c.MotivoConsulta}|{c.Activa}";
+                        // MODIFICADO: Guardamos la fecha de nacimiento estructurada como texto (aaaa-mm-dd)
+                        string linea = $"{c.IdCita}|{c.DatosPaciente.IdPaciente}|{c.DatosPaciente.NombreCompleto}|{c.DatosPaciente.Telefono}|{c.DatosPaciente.FechaNacimiento.ToString("yyyy-MM-dd")}|{c.DatosPaciente.Correo}|{c.FechaHora}|{c.MotivoConsulta}|{c.Activa}";
                         sw.WriteLine(linea);
                     }
                 }
@@ -356,7 +354,8 @@ namespace DentalCareManager
                                 c.DatosPaciente.IdPaciente = int.Parse(datos[1]);
                                 c.DatosPaciente.NombreCompleto = datos[2];
                                 c.DatosPaciente.Telefono = datos[3];
-                                c.DatosPaciente.Edad = int.Parse(datos[4]);
+                                // MODIFICADO: Volvemos a transformar el texto del archivo a tipo DateTime
+                                c.DatosPaciente.FechaNacimiento = DateTime.Parse(datos[4]);
                                 c.DatosPaciente.Correo = datos[5];
 
                                 c.FechaHora = datos[6];
@@ -378,11 +377,30 @@ namespace DentalCareManager
 
         // --- MÉTODO AUXILIAR ---
 
+        // MODIFICADO: Muestra la Fecha de Nacimiento y calcula la Edad exacta al día de la consulta
         static void ImprimirDetalleCita(Cita c)
         {
+            // Intentamos extraer la fecha de la consulta para calcular la edad en ese momento exacto
+            DateTime fechaConsulta;
+            if (!DateTime.TryParse(c.FechaHora, out fechaConsulta))
+            {
+                fechaConsulta = DateTime.Today; // Si falla el formato, usa el día de hoy por seguridad
+            }
+
+            DateTime nacimiento = c.DatosPaciente.FechaNacimiento;
+
+            // Algoritmo para calcular la edad exacta restando los años
+            int edadAlDiaConsulta = fechaConsulta.Year - nacimiento.Year;
+
+            // Si la fecha de la consulta es anterior al día de su cumpleaños de ese año, restamos 1 año
+            if (fechaConsulta < nacimiento.AddYears(edadAlDiaConsulta))
+            {
+                edadAlDiaConsulta--;
+            }
+
             Console.WriteLine("--------------------------------------------------");
             Console.WriteLine($"[ID Cita: {c.IdCita}] - Fecha y Hora: {c.FechaHora}");
-            Console.WriteLine($"Paciente: {c.DatosPaciente.NombreCompleto} | Edad: {c.DatosPaciente.Edad} | Tel: {c.DatosPaciente.Telefono}");
+            Console.WriteLine($"Paciente: {c.DatosPaciente.NombreCompleto} | F. Nacimiento: {nacimiento.ToString("dd/MM/yyyy")} | Edad a la consulta: {edadAlDiaConsulta} años | Tel: {c.DatosPaciente.Telefono}");
             Console.WriteLine($"Motivo: {c.MotivoConsulta}");
         }
     }
