@@ -26,8 +26,8 @@ namespace DentalCareManager
         static Cita[] agendaCitas = new Cita[100];
         static int totalCitas = 0;
 
-        // CADENA DE CONEXIÓN (Ajusta el Server si utilizas SQLEXPRESS u otra instancia)
-        const string connectionString = "Server=localhost\\SQLEXPRESS;Database=ConsultorioDental;Trusted_Connection=True;TrustServerCertificate=True;";
+        const string connectionString = "Server=localhost;Database=ConsultorioDental;Trusted_Connection=True;TrustServerCertificate=True;";
+
         static void Main(string[] args)
         {
             CargarDesdeBaseDatos();
@@ -89,9 +89,6 @@ namespace DentalCareManager
 
             Paciente nuevoPaciente = new Paciente();
 
-            // ==========================================
-            // 1. CAPTURA Y VALIDACIÓN DEL NOMBRE
-            // ==========================================
             while (true)
             {
                 try
@@ -104,7 +101,6 @@ namespace DentalCareManager
                         throw new Exception("El nombre no puede estar vacío.");
                     }
 
-                    // Revisamos carácter por carácter que no existan números
                     foreach (char c in nombreInput)
                     {
                         if (char.IsDigit(c))
@@ -114,7 +110,7 @@ namespace DentalCareManager
                     }
 
                     nuevoPaciente.Nombre = nombreInput;
-                    break; // Si todo está bien, rompe el bucle y pasa al apellido
+                    break; 
                 }
                 catch (Exception ex)
                 {
@@ -122,9 +118,6 @@ namespace DentalCareManager
                 }
             }
 
-            // ==========================================
-            // 2. CAPTURA Y VALIDACIÓN DEL APELLIDO
-            // ==========================================
             while (true)
             {
                 try
@@ -154,15 +147,9 @@ namespace DentalCareManager
                 }
             }
 
-            // ==========================================
-            // 3. CAPTURA DE CÉDULA (Se mantiene libre)
-            // ==========================================
             Console.Write("Cédula: ");
             nuevoPaciente.Cedula = Console.ReadLine() ?? "N/A";
 
-            // ==========================================
-            // 4. CAPTURA Y VALIDACIÓN DEL TELÉFONO
-            // ==========================================
             while (true)
             {
                 try
@@ -175,7 +162,6 @@ namespace DentalCareManager
                         throw new Exception("El teléfono no puede estar vacío.");
                     }
 
-                    // Revisamos que solo contenga números (evitamos letras como la 'g')
                     foreach (char c in telefonoInput)
                     {
                         if (char.IsLetter(c))
@@ -193,16 +179,12 @@ namespace DentalCareManager
                 }
             }
 
-            // ==========================================
-            // CONTINUACIÓN DE TU LÓGICA DE HORARIOS
-            // ==========================================
             string fechaInput = "";
             string horaInput = "";
             bool horarioValido = false;
             DateTime fechaFinal = DateTime.Now;
             TimeSpan horaFinal = TimeSpan.Zero;
 
-            // Aquí continúa el resto del código que ya tenías para capturar la fecha y hora...
             while (!horarioValido)
             {
                 Console.Write("Fecha de la cita (Ej. 2026-10-15): ");
@@ -234,7 +216,6 @@ namespace DentalCareManager
                 {
                     conexion.Open();
 
-                    // Mapeo exacto a las columnas reales de tu tabla Pacientes
                     string queryPaciente = @"INSERT INTO Pacientes (Cedula, Nombre, Apellido, Telefono, FechaRegistro, Activo) 
                                              OUTPUT INSERTED.IdPaciente 
                                              VALUES (@Cedula, @Nombre, @Apellido, @Tel, @FechaReg, 1);";
@@ -248,7 +229,6 @@ namespace DentalCareManager
 
                     int idPacienteGenerado = (int)cmdP.ExecuteScalar();
 
-                    // Mapeo exacto a las columnas reales de tu tabla Citas
                     string queryCita = @"INSERT INTO Citas (IdPaciente, Fecha, Hora, Estado, IdDentista) 
                                          VALUES (@IdPaciente, @Fecha, @Hora, 'Activa', 1);";
 
