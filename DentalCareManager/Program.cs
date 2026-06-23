@@ -89,24 +89,121 @@ namespace DentalCareManager
             }
 
             Paciente nuevoPaciente = new Paciente();
-            Console.Write("Nombre del paciente: ");
-            nuevoPaciente.Nombre = Console.ReadLine() ?? "Desconocido";
 
-            Console.Write("Apellido del paciente: ");
-            nuevoPaciente.Apellido = Console.ReadLine() ?? "Desconocido";
+            // ==========================================
+            // 1. CAPTURA Y VALIDACIÓN DEL NOMBRE
+            // ==========================================
+            while (true)
+            {
+                try
+                {
+                    Console.Write("Nombre del paciente: ");
+                    string nombreInput = Console.ReadLine()!;
 
+                    if (string.IsNullOrWhiteSpace(nombreInput))
+                    {
+                        throw new Exception("El nombre no puede estar vacío.");
+                    }
+
+                    // Revisamos carácter por carácter que no existan números
+                    foreach (char c in nombreInput)
+                    {
+                        if (char.IsDigit(c))
+                        {
+                            throw new Exception("El nombre no puede contener números.");
+                        }
+                    }
+
+                    nuevoPaciente.Nombre = nombreInput;
+                    break; // Si todo está bien, rompe el bucle y pasa al apellido
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Error en Nombre]: {ex.Message} Inténtalo de nuevo.\n");
+                }
+            }
+
+            // ==========================================
+            // 2. CAPTURA Y VALIDACIÓN DEL APELLIDO
+            // ==========================================
+            while (true)
+            {
+                try
+                {
+                    Console.Write("Apellido del paciente: ");
+                    string apellidoInput = Console.ReadLine()!;
+
+                    if (string.IsNullOrWhiteSpace(apellidoInput))
+                    {
+                        throw new Exception("El apellido no puede estar vacío.");
+                    }
+
+                    foreach (char c in apellidoInput)
+                    {
+                        if (char.IsDigit(c))
+                        {
+                            throw new Exception("El apellido no puede contener números.");
+                        }
+                    }
+
+                    nuevoPaciente.Apellido = apellidoInput;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Error en Apellido]: {ex.Message} Inténtalo de nuevo.\n");
+                }
+            }
+
+            // ==========================================
+            // 3. CAPTURA DE CÉDULA (Se mantiene libre)
+            // ==========================================
             Console.Write("Cédula: ");
             nuevoPaciente.Cedula = Console.ReadLine() ?? "N/A";
 
-            Console.Write("Teléfono: ");
-            nuevoPaciente.Telefono = Console.ReadLine() ?? "N/A";
+            // ==========================================
+            // 4. CAPTURA Y VALIDACIÓN DEL TELÉFONO
+            // ==========================================
+            while (true)
+            {
+                try
+                {
+                    Console.Write("Teléfono: ");
+                    string telefonoInput = Console.ReadLine()!;
 
+                    if (string.IsNullOrWhiteSpace(telefonoInput))
+                    {
+                        throw new Exception("El teléfono no puede estar vacío.");
+                    }
+
+                    // Revisamos que solo contenga números (evitamos letras como la 'g')
+                    foreach (char c in telefonoInput)
+                    {
+                        if (char.IsLetter(c))
+                        {
+                            throw new Exception("El teléfono solo debe contener números.");
+                        }
+                    }
+
+                    nuevoPaciente.Telefono = telefonoInput;
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Error en Teléfono]: {ex.Message} Inténtalo de nuevo.\n");
+                }
+            }
+
+            // ==========================================
+            // CONTINUACIÓN DE TU LÓGICA DE HORARIOS
+            // ==========================================
             string fechaInput = "";
             string horaInput = "";
             bool horarioValido = false;
             DateTime fechaFinal = DateTime.Now;
             TimeSpan horaFinal = TimeSpan.Zero;
 
+            // Aquí continúa el resto del código que ya tenías para capturar la fecha y hora...
             while (!horarioValido)
             {
                 Console.Write("Fecha de la cita (Ej. 2026-10-15): ");
@@ -375,4 +472,4 @@ namespace DentalCareManager
             Console.WriteLine($"Paciente: {c.DatosPaciente.Nombre} {c.DatosPaciente.Apellido} | Tel: {c.DatosPaciente.Telefono}");
         }
     }
-}
+} 
