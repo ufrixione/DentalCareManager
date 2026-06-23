@@ -27,8 +27,7 @@ namespace DentalCareManager
         static int totalCitas = 0;
 
         // CADENA DE CONEXIÓN (Ajusta el Server si utilizas SQLEXPRESS u otra instancia)
-        const string connectionString = "Server=localhost;Database=ConsultorioDental;Trusted_Connection=True;TrustServerCertificate=True;";
-
+        const string connectionString = "Server=localhost\\SQLEXPRESS;Database=ConsultorioDental;Trusted_Connection=True;TrustServerCertificate=True;";
         static void Main(string[] args)
         {
             CargarDesdeBaseDatos();
