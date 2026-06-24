@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DentalCareManager</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+
+    .header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon { width: 40px; height: 40px; background: #185FA5; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; }
+    .logo-name { font-size: 17px; font-weight: 600; color: #1a1a1a; }
+    .logo-sub { font-size: 11px; color: #888; }
+    .lang-toggle { display: flex; gap: 6px; }
+    .lang-btn { padding: 4px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 13px; cursor: pointer; background: #fff; color: #666; }
+    .lang-btn.active { background: #185FA5; color: #fff; border-color: #185FA5; }
+
+    .hero { background: #042C53; padding: 3rem 2rem 4rem; text-align: center; position: relative; overflow: hidden; }
+    .hero-ring { position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,0.06); }
+    .hero-ring-1 { width: 260px; height: 260px; top: -80px; left: -60px; }
+    .hero-ring-2 { width: 180px; height: 180px; bottom: -60px; right: 40px; }
+    .hero-ring-3 { width: 100px; height: 100px; top: 20px; right: 120px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: rgba(255,255,255,0.7); margin-bottom: 16px; }
+    .hero h1 { font-size: 26px; font-weight: 600; color: #fff; margin-bottom: 8px; position: relative; }
+    .hero p { font-size: 14px; color: rgba(255,255,255,0.6); position: relative; }
+
+    .stats-bar { background: #fff; border-bottom: 1px solid #e5e5e5; display: flex; justify-content: center; }
+    .stat-item { padding: 14px 28px; text-align: center; border-right: 1px solid #e5e5e5; }
+    .stat-item:last-child { border-right: none; }
+    .stat-num { font-size: 20px; font-weight: 600; color: #185FA5; }
+    .stat-lbl { font-size: 11px; color: #888; margin-top: 2px; }
+
+    .main { max-width: 820px; margin: 2rem auto; padding: 0 1rem; display: grid; grid-template-columns: 1fr 1.2fr; gap: 1.5rem; }
+    .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 1.5rem; }
+    .card-title { font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+    .card-title i { font-size: 17px; color: #185FA5; }
+
+    .calendar-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .cal-btn { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 4px 10px; cursor: pointer; color: #666; font-size: 14px; }
+    .cal-btn:hover { background: #f5f5f5; }
+    .month-label { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+    .cal-day-name { font-size: 11px; color: #aaa; padding: 4px 0; font-weight: 600; }
+    .cal-day { font-size: 13px; padding: 6px 2px; border-radius: 6px; cursor: default; color: #ccc; }
+    .cal-day.has-slots { color: #185FA5; font-weight: 600; cursor: pointer; }
+    .cal-day.has-slots::after { content: ''; display: block; width: 4px; height: 4px; background: #185FA5; border-radius: 50%; margin: 1px auto 0; }
+    .cal-day.has-slots:hover { background: #E6F1FB; }
+    .cal-day.selected { background: #185FA5; color: #fff !important; }
+    .cal-day.selected::after { background: rgba(255,255,255,0.6); }
+    .cal-day.past { color: #ddd; }
+    .cal-day.today { border: 1px solid #185FA5; color: #185FA5; }
+
+    .legend { display: flex; gap: 16px; margin-top: 12px; font-size: 12px; color: #888; align-items: center; }
+    .leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .leg-free { background: #185FA5; }
+    .leg-taken { background: #D85A30; }
+
+    .slots-empty { text-align: center; padding: 2.5rem 1rem; color: #bbb; font-size: 14px; }
+    .slots-empty i { font-size: 34px; display: block; margin-bottom: 8px; }
+    .day-header { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; }
+    .slots-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .slot-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 8px; border: 1px solid; }
+    .slot-item.free { border-color: #B5D4F4; background: #E6F1FB; }
+    .slot-item.taken { border-color: #F0997B; background: #FAECE7; }
+    .slot-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .slot-item.free .slot-dot { background: #185FA5; }
+    .slot-item.taken .slot-dot { background: #D85A30; }
+    .slot-time { font-size: 13px; font-weight: 600; }
+    .slot-item.free .slot-time { color: #0C447C; }
+    .slot-item.taken .slot-time { color: #993C1D; }
+    .slot-label { font-size: 11px; }
+    .slot-item.free .slot-label { color: #185FA5; }
+    .slot-item.taken .slot-label { color: #D85A30; }
+
+    .loading { text-align: center; padding: 2rem; color: #aaa; font-size: 14px; }
+
+    .notice { background: #f9f9f9; border: 1px solid #e5e5e5; border-radius: 8px; padding: 12px 14px; margin-top: 1.5rem; font-size: 12px; color: #666; display: flex; gap: 8px; align-items: flex-start; }
+    .notice i { font-size: 15px; color: #185FA5; margin-top: 1px; flex-shrink: 0; }
+
+    .footer { text-align: center; padding: 2rem 1rem 1.5rem; font-size: 12px; color: #aaa; border-top: 1px solid #e5e5e5; margin-top: 1rem; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .footer-logo { display: flex; align-items: center; gap: 8px; }
+    .footer-icon { width: 24px; height: 24px; background: #185FA5; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; }
+
+    @media (max-width: 600px) {
+      .main { grid-template-columns: 1fr; }
+      .stat-item { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-tooth"></i></div>
+    <div>
+      <div class="logo-name">DentalCareManager</div>
+      <div class="logo-sub" id="logo-sub">Clínica Dental / Dental Clinic</div>
+    </div>
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('es')">ES</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="hero-ring hero-ring-1"></div>
+  <div class="hero-ring hero-ring-2"></div>
+  <div class="hero-ring hero-ring-3"></div>
+  <div class="hero-badge"><i class="ti ti-circle-check"></i> <span id="badge-text">Disponibilidad en tiempo real</span></div>
+  <h1 id="hero-title">Consulta los horarios disponibles</h1>
+  <p id="hero-sub">Revisa la disponibilidad del dentista y comunícate con nosotros para agendar tu cita</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item">
+    <div class="stat-num" id="stat-free">—</div>
+    <div class="stat-lbl" id="stat-free-lbl">Espacios libres hoy</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">Lun–Vie</div>
+    <div class="stat-lbl" id="stat-hours-lbl">Horario de atención</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num">8am–5pm</div>
+    <div class="stat-lbl" id="stat-schedule-lbl">Horas disponibles</div>
+  </div>
+</div>
+
+<div class="main">
+  <div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-calendar"></i> <span id="lbl-cal">Disponibilidad</span></div>
+      <div class="calendar-nav">
+        <button class="cal-btn" onclick="changeMonth(-1)">&#8592;</button>
+        <span class="month-label" id="month-label"></span>
+        <button class="cal-btn" onclick="changeMonth(1)">&#8594;</button>
+      </div>
+      <div class="cal-grid" id="cal-grid"></div>
+      <div class="legend">
+        <span style="display:flex;align-items:center;gap:5px;"><span class="leg-dot leg-free"></span><span id="lbl-free">Disponible</span></span>
+        <span style="display:flex;align-items:center;gap:5px;"><span class="leg-dot leg-taken"></span><span id="lbl-taken">Ocupado</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <div class="card-title"><i class="ti ti-clock"></i> <span id="lbl-slots-title">Horarios del día</span></div>
+      <div id="slots-area">
+        <div class="slots-empty">
+          <i class="ti ti-calendar-search"></i>
+          <span id="lbl-pick">Selecciona un día en el calendario</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice">
+      <i class="ti ti-phone"></i>
+      <span id="lbl-notice">Para agendar una cita, comunícate con nosotros directamente al <strong>(505) 8888-0000</strong> o visítanos en clínica.</span>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-logo">
+    <div class="footer-icon"><i class="ti ti-tooth"></i></div>
+    <span style="font-weight:600;color:#666;">DentalCareManager</span>
+  </div>
+  <span id="footer-text">© 2026 · Todos los derechos reservados / All rights reserved</span>
+</div>
+
+<script>
+  // ─── CAMBIA ESTA URL si tu servidor corre en otro puerto o dominio ───────────
+  const API_BASE = 'http://localhost:3000';
+
+  const T = {
+    es: {
+      badge: 'Disponibilidad en tiempo real', heroTitle: 'Consulta los horarios disponibles',
+      heroSub: 'Revisa la disponibilidad del dentista y comunícate con nosotros para agendar tu cita',
+      cal: 'Disponibilidad', slotsTitle: 'Horarios del día', free: 'Disponible', taken: 'Ocupado',
+      pick: 'Selecciona un día en el calendario', loading: 'Cargando...',
+      notice: 'Para agendar una cita, comunícate con nosotros directamente al <strong>(505) 8888-0000</strong> o visítanos en clínica.',
+      statFreeLbl: 'Espacios libres hoy', statHoursLbl: 'Horario de atención', statScheduleLbl: 'Horas disponibles',
+      days: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+      months: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+      lblFree: 'Libre', lblTaken: 'Ocupado', footer: '© 2026 · Todos los derechos reservados',
+    },
+    en: {
+      badge: 'Real-time availability', heroTitle: 'Check available appointment slots',
+      heroSub: 'View dentist availability and contact us to book your appointment',
+      cal: 'Availability', slotsTitle: 'Day schedule', free: 'Available', taken: 'Taken',
+      pick: 'Select a day on the calendar', loading: 'Loading...',
+      notice: 'To book an appointment, contact us directly at <strong>(505) 8888-0000</strong> or visit us at the clinic.',
+      statFreeLbl: 'Free slots today', statHoursLbl: 'Office hours', statScheduleLbl: 'Available hours',
+      days: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+      months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
+      lblFree: 'Free', lblTaken: 'Taken', footer: '© 2026 · All rights reserved',
+    }
+  };
+
+  let lang = 'es';
+  let viewYear = new Date().getFullYear();
+  let viewMonth = new Date().getMonth();
+  let selectedDay = null;
+  let availableDays = []; // días con espacios libres (cargados desde la API)
+
+  // ─── Carga días disponibles del mes desde la API ─────────────────────────────
+  async function loadAvailableDays(year, month) {
+    try {
+      const res = await fetch(`${API_BASE}/api/disponibilidad?year=${year}&month=${month + 1}`);
+      const data = await res.json();
+      availableDays = data.dias || [];
+    } catch (e) {
+      console.error('Error cargando disponibilidad:', e);
+      availableDays = [];
+    }
+    renderCalendar();
+  }
+
+  // ─── Carga horarios del día seleccionado desde la API ───────────────────────
+  async function loadSlots(year, month, day) {
+    document.getElementById('slots-area').innerHTML = `<div class="loading"><i class="ti ti-loader"></i> ${T[lang].loading}</div>`;
+    try {
+      const res = await fetch(`${API_BASE}/api/horarios?year=${year}&month=${month + 1}&day=${day}`);
+      const data = await res.json();
+      renderSlots(day, data.horarios || {});
+    } catch (e) {
+      console.error('Error cargando horarios:', e);
+      renderSlots(day, {});
+    }
+  }
+
+  // ─── Carga espacios libres de hoy para la barra de estadísticas ─────────────
+  async function loadTodayStats() {
+    const today = new Date();
+    try {
+      const res = await fetch(`${API_BASE}/api/horarios?year=${today.getFullYear()}&month=${today.getMonth() + 1}&day=${today.getDate()}`);
+      const data = await res.json();
+      const libres = Object.values(data.horarios || {}).filter(v => v === 'free').length;
+      document.getElementById('stat-free').textContent = libres;
+    } catch (e) {
+      document.getElementById('stat-free').textContent = '—';
+    }
+  }
+
+  function setLang(l) {
+    lang = l;
+    document.querySelectorAll('.lang-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i===0&&l==='es')||(i===1&&l==='en'));
+    });
+    const t = T[l];
+    document.getElementById('badge-text').textContent = t.badge;
+    document.getElementById('hero-title').textContent = t.heroTitle;
+    document.getElementById('hero-sub').textContent = t.heroSub;
+    document.getElementById('lbl-cal').textContent = t.cal;
+    document.getElementById('lbl-slots-title').textContent = t.slotsTitle;
+    document.getElementById('lbl-free').textContent = t.free;
+    document.getElementById('lbl-taken').textContent = t.taken;
+    document.getElementById('lbl-pick').textContent = t.pick;
+    document.getElementById('lbl-notice').innerHTML = t.notice;
+    document.getElementById('stat-free-lbl').textContent = t.statFreeLbl;
+    document.getElementById('stat-hours-lbl').textContent = t.statHoursLbl;
+    document.getElementById('stat-schedule-lbl').textContent = t.statScheduleLbl;
+    document.getElementById('footer-text').textContent = t.footer;
+    renderCalendar();
+    if (selectedDay) loadSlots(viewYear, viewMonth, selectedDay);
+  }
+
+  function renderCalendar() {
+    const t = T[lang];
+    const grid = document.getElementById('cal-grid');
+    document.getElementById('month-label').textContent = `${t.months[viewMonth]} ${viewYear}`;
+    grid.innerHTML = '';
+    t.days.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'cal-day-name';
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+    const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const today = new Date();
+    for (let i = 0; i < firstDay; i++) {
+      const el = document.createElement('div'); el.className = 'cal-day'; grid.appendChild(el);
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const el = document.createElement('div');
+      const date = new Date(viewYear, viewMonth, d);
+      const isPast = date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const isToday = date.toDateString() === today.toDateString();
+      const hasFree = availableDays.includes(d);
+      el.className = 'cal-day';
+      if (isPast) el.classList.add('past');
+      else if (isToday) el.classList.add('today');
+      if (!isPast && hasFree) el.classList.add('has-slots');
+      if (selectedDay === d) el.classList.add('selected');
+      el.textContent = d;
+      if (!isPast && hasFree) el.onclick = () => { selectedDay = d; renderCalendar(); loadSlots(viewYear, viewMonth, d); };
+      grid.appendChild(el);
+    }
+  }
+
+  function renderSlots(day, horarios) {
+    const area = document.getElementById('slots-area');
+    const t = T[lang];
+    if (!horarios || !Object.keys(horarios).length) {
+      area.innerHTML = `<div class="slots-empty"><i class="ti ti-calendar-x"></i><span>${t.pick}</span></div>`;
+      return;
+    }
+    const dateStr = `${day} ${t.months[viewMonth]} ${viewYear}`;
+    let html = `<div class="day-header"><i class="ti ti-calendar-event" style="margin-right:5px;vertical-align:-2px;"></i>${dateStr}</div><div class="slots-grid">`;
+    Object.entries(horarios).forEach(([hora, estado]) => {
+      const label = estado === 'free' ? t.lblFree : t.lblTaken;
+      html += `<div class="slot-item ${estado}"><span class="slot-dot"></span><div><div class="slot-time">${hora}</div><div class="slot-label">${label}</div></div></div>`;
+    });
+    html += '</div>';
+    area.innerHTML = html;
+  }
+
+  function changeMonth(dir) {
+    viewMonth += dir;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    selectedDay = null;
+    document.getElementById('slots-area').innerHTML = `<div class="slots-empty"><i class="ti ti-calendar-search"></i><span>${T[lang].pick}</span></div>`;
+    loadAvailableDays(viewYear, viewMonth);
+  }
+
+  // Inicio
+  loadAvailableDays(viewYear, viewMonth);
+  loadTodayStats();
+</script>
+</body>
+</html>
