@@ -113,11 +113,18 @@
             Console.Write("Teléfono: ");
             nuevaCita.DatosPaciente.Telefono = Console.ReadLine() ?? "N/A";
 
-            // MODIFICADO: Validación y captura de Fecha de Nacimiento
+            // MODIFICADO: Validación forzando el formato Día/Mes/Año
             try
             {
                 Console.Write("Fecha de nacimiento (Ej. 18/05/1998): ");
-                nuevaCita.DatosPaciente.FechaNacimiento = DateTime.Parse(Console.ReadLine() ?? "");
+                string entradaFecha = Console.ReadLine() ?? "";
+
+                // ParseExact obliga al programa a leer dd/MM/yyyy ignorando el reloj de Windows
+                nuevaCita.DatosPaciente.FechaNacimiento = DateTime.ParseExact(
+                    entradaFecha,
+                    "dd/MM/yyyy",
+                    System.Globalization.CultureInfo.InvariantCulture
+                );
             }
             catch (FormatException)
             {
